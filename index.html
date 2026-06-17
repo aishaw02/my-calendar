@@ -1,0 +1,1655 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>作战面板 · 王方浦</title>
+<style>
+  :root{
+    --bg:#f7fbff; --panel:#ffffff; --panel2:#f0f6fb; --line:#e3ecf3;
+    --text:#3a4a5c; --muted:#8aa0b4; --accent:#7fb3e6; --accent2:#f4a8c4;
+    --ok:#9dd3b8; --warn:#f4c79a; --bad:#e89aa8;
+    --today:#e6f0fb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font:14px/1.5 -apple-system,"PingFang SC","SF Pro Text",Segoe UI,Helvetica,Arial,sans-serif;}
+  button,input,textarea,select{font:inherit;color:inherit}
+  button{cursor:pointer;background:var(--panel2);border:1px solid var(--line);
+    color:var(--text);padding:6px 10px;border-radius:6px;}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);color:#ffffff;border-color:var(--accent);font-weight:600}
+  textarea,input[type=text],input[type=number],select{
+    background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    padding:6px 8px;width:100%;outline:none;}
+  textarea:focus,input:focus,select:focus{border-color:var(--accent)}
+  a{color:var(--accent);text-decoration:none}
+
+  /* Top bar */
+  header{padding:14px 22px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--panel)}
+  header h1{margin:0;font-size:16px;font-weight:600;letter-spacing:.5px}
+  .countdowns{display:flex;gap:10px;flex-wrap:wrap}
+  .cd{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+    padding:6px 12px;display:flex;gap:8px;align-items:baseline}
+  .cd .n{font-size:18px;font-weight:700;color:var(--accent)}
+  .cd .lbl{color:var(--muted);font-size:12px}
+  .cd.warn .n{color:var(--warn)}
+  .cd.bad .n{color:var(--bad)}
+
+  /* Layout */
+  main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:18px;padding:18px;
+    height:calc(100vh - 60px);overflow:hidden}
+  .left{display:flex;flex-direction:column;gap:14px;overflow:auto;padding-right:4px}
+  .right{display:flex;flex-direction:column;gap:14px;overflow:auto;padding-right:4px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .card h2{margin:0 0 10px;font-size:13px;color:var(--muted);text-transform:uppercase;
+    letter-spacing:1px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+
+  /* Calendar */
+  .cal-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .cal-head .title{font-size:18px;font-weight:600;flex:1}
+  .grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .dow{color:var(--muted);font-size:11px;text-align:center;padding:4px 0}
+  .day{aspect-ratio:1/1;background:var(--panel2);border:1px solid var(--line);
+    border-radius:6px;padding:5px 6px;cursor:pointer;display:flex;flex-direction:column;
+    gap:2px;position:relative;overflow:hidden}
+  .day:hover{border-color:var(--accent)}
+  .day.other{opacity:.3}
+  .day.today{background:var(--today);border-color:var(--accent)}
+  .day.selected{outline:2px solid var(--accent);outline-offset:-2px}
+  .day .dn{font-size:13px;font-weight:600}
+  .day .ln{font-size:10px;color:var(--muted);line-height:1;margin-top:-1px}
+  .day .ln.festival{color:var(--accent2);font-weight:600}
+  .day .dots{display:flex;gap:3px;flex-wrap:wrap;margin-top:auto}
+  .dot{width:6px;height:6px;border-radius:50%}
+  .dot.j{background:var(--accent2)}
+  .dot.t{background:var(--ok)}
+  .dot.i{background:var(--warn)}
+  .day .ev{font-size:10px;color:var(--warn);line-height:1.1;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .day .todos{display:flex;flex-direction:column;gap:1px;margin-top:2px;
+    font-size:10px;line-height:1.15;overflow:hidden}
+  .day .td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    color:var(--text);padding-left:8px;position:relative}
+  .day .td:before{content:'';position:absolute;left:1px;top:5px;
+    width:4px;height:4px;border-radius:50%;background:var(--ok)}
+  .day .td.done{color:var(--muted);text-decoration:line-through}
+  .day .td.done:before{background:var(--muted)}
+  .day .td.more{color:var(--muted);padding-left:0;font-style:italic}
+  .day .td.more:before{display:none}
+  .day .mood{position:absolute;top:2px;right:4px;font-size:18px;line-height:1;
+    filter:drop-shadow(0 1px 2px rgba(127,179,230,.25))}
+
+  /* Week strip */
+  .week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .wd{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px;min-height:90px;
+    display:flex;flex-direction:column;gap:4px;cursor:pointer}
+  .wd:hover{border-color:var(--accent)}
+  .wd.today{background:var(--today);border-color:var(--accent)}
+  .wd .h{display:flex;justify-content:space-between;align-items:baseline}
+  .wd .lbl{color:var(--muted);font-size:11px}
+  .wd .dn{font-weight:700}
+  .wd .mini{font-size:11px;color:var(--muted);line-height:1.3;
+    overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+
+  /* Right panels */
+  .day-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .day-head .d{font-size:18px;font-weight:600}
+  .day-head .w{color:var(--muted);font-size:12px}
+  .moods{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap;align-items:center}
+  .moods button{padding:4px 10px;font-size:18px;background:var(--panel2);line-height:1.2}
+  .moods button.on{background:var(--accent2);border-color:var(--accent2);color:#fff}
+  .moods button.mood-add{font-size:14px;color:var(--muted);padding:4px 8px}
+  .moods button.mood-add:hover{color:var(--accent2)}
+  .moods .custom-wrap{position:relative;display:inline-block}
+  .moods .custom-wrap .del{position:absolute;top:-4px;right:-4px;width:14px;height:14px;
+    border-radius:50%;background:var(--bad);color:#fff;font-size:10px;line-height:14px;
+    text-align:center;cursor:pointer;display:none;border:0;padding:0}
+  .moods .custom-wrap:hover .del{display:block}
+
+  /* Emoji picker */
+  .emoji-pop{position:fixed;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;box-shadow:0 12px 40px rgba(127,179,230,.3);
+    padding:10px;width:340px;max-height:380px;display:none;flex-direction:column;
+    z-index:200}
+  .emoji-pop.on{display:flex}
+  .emoji-cats{display:flex;gap:2px;margin-bottom:8px;border-bottom:1px solid var(--line);
+    padding-bottom:6px;overflow-x:auto}
+  .emoji-cats button{font-size:16px;padding:4px 8px;background:transparent;border:1px solid transparent;
+    flex:0 0 auto}
+  .emoji-cats button.on{background:var(--panel2);border-color:var(--line)}
+  .emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;overflow:auto;flex:1;min-height:0}
+  .emoji-grid button{font-size:20px;padding:4px;background:transparent;border:1px solid transparent;
+    border-radius:4px;line-height:1.2}
+  .emoji-grid button:hover{background:var(--panel2);border-color:var(--accent2)}
+  textarea.diary{min-height:120px;resize:vertical}
+
+  /* Todos */
+  .todo{display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--line)}
+  .todo:last-child{border-bottom:0}
+  .todo input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent)}
+  .todo .t{flex:1}
+  .todo.done .t{color:var(--muted);text-decoration:line-through}
+  .todo .x{color:var(--muted);background:transparent;border:0;padding:2px 6px}
+  .todo .x:hover{color:var(--bad)}
+
+  /* IELTS */
+  .ielts-row{display:grid;grid-template-columns:60px 1fr;gap:8px;align-items:center;margin:6px 0}
+  .ielts-row .lab{color:var(--muted);font-size:12px}
+  .ielts-checks{display:flex;gap:4px}
+  .ielts-checks button{width:28px;padding:4px 0;text-align:center}
+  .ielts-checks button.on{background:var(--accent2);border-color:var(--accent2);color:#fff}
+  .mock{display:grid;grid-template-columns:1fr 50px 50px 50px 50px 46px 24px;gap:6px;
+    align-items:center;margin:4px 0;font-size:12px}
+  .mock input{padding:4px 6px;text-align:center}
+  .mock .ov{text-align:center;font-weight:600;color:var(--accent2)}
+  .mock-head{color:var(--muted);font-size:11px}
+
+  /* Companies */
+  .co{display:grid;grid-template-columns:18px 1fr 110px 24px;gap:6px;align-items:center;
+    padding:5px 0;border-bottom:1px dashed var(--line)}
+  .co:last-child{border-bottom:0}
+  .co .nm{font-size:13px}
+  .co select{padding:4px 6px;font-size:12px;font-weight:600;
+    border-color:transparent;transition:background .2s}
+  .co select.st-关注{background:#eef4fa;color:#5a7896}
+  .co select.st-简历投递{background:#dbe9f6;color:#3d6890}
+  .co select.st-网申{background:#c5dcf0;color:#2f5a85}
+  .co select.st-笔试{background:#aed0eb;color:#234d77}
+  .co select.st-一面{background:#f5d8e3;color:#8a3f5c}
+  .co select.st-二面{background:#eeb5cb;color:#74304a}
+  .co select.st-三面{background:#d98aae;color:#fff}
+  .co select.st-Offer{background:#9dd3b8;color:#1f5a3a;font-weight:700}
+  .co select.st-挂{background:#d9d9d9;color:#888;text-decoration:line-through}
+  .co.s-offer{background:rgba(157,211,184,.18)}
+  .co.s-rej{opacity:.5}
+  .co .drag{cursor:grab;color:var(--muted);font-size:14px;text-align:center;
+    user-select:none;line-height:1}
+  .co .drag:hover{color:var(--accent)}
+  .co.dragging{opacity:.4}
+  .co.drag-over{border-top:2px solid var(--accent2)}
+
+  /* Review modal */
+  .modal-mask{position:fixed;inset:0;background:rgba(58,74,92,.35);
+    backdrop-filter:blur(4px);display:none;align-items:flex-start;justify-content:center;
+    z-index:100;padding:40px 20px;overflow:auto}
+  .modal-mask.on{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    width:min(720px,100%);box-shadow:0 20px 60px rgba(127,179,230,.25);
+    display:flex;flex-direction:column}
+  .modal-head{padding:16px 20px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:0 0 auto}
+  .modal-head h3{margin:0;font-size:16px;flex:1}
+  .modal-head .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .modal-head select,.modal-head input[type=text]{width:auto;min-width:120px}
+  .modal-body{padding:8px 20px 20px;overflow:auto;max-height:calc(100vh - 200px);min-height:60px}
+  .modal-close{background:transparent;border:0;font-size:20px;color:var(--muted);padding:0 4px}
+  .modal-close:hover{color:var(--bad)}
+
+  .mood-stats{display:flex;gap:6px;flex-wrap:wrap;padding:10px 0;
+    border-bottom:1px dashed var(--line);margin-bottom:8px}
+  .mood-stat{background:var(--panel2);border:1px solid var(--line);border-radius:14px;
+    padding:3px 10px;font-size:13px}
+
+  .entry{padding:12px 0;border-bottom:1px dashed var(--line);cursor:pointer}
+  .entry:hover{background:var(--panel2);border-radius:6px;padding-left:8px;padding-right:8px}
+  .entry-head{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  .entry-date{font-weight:600;font-size:14px}
+  .entry-week{color:var(--muted);font-size:12px}
+  .entry-mood{font-size:18px;margin-left:auto}
+  .entry-cd{color:var(--muted);font-size:11px}
+  .entry-text{font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.55}
+  .entry-text mark{background:rgba(244,168,196,.4);color:inherit;padding:0 2px;border-radius:2px}
+  .entry.no-text .entry-text{color:var(--muted);font-style:italic}
+
+  /* Suggest modal */
+  .sg-tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+  .sg-tabs button{padding:5px 14px;font-size:13px}
+  .sg-tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .sg-sub{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+  .sg-sub button{padding:3px 10px;font-size:12px;background:transparent}
+  .sg-sub button.on{background:var(--accent2);border-color:var(--accent2);color:#fff}
+  .sg-section{margin-bottom:14px}
+  .sg-section h4{margin:0 0 6px;font-size:12px;color:var(--muted);
+    font-weight:600;letter-spacing:1px;text-transform:uppercase}
+  .sg-item{display:flex;gap:10px;align-items:flex-start;padding:8px 0;
+    border-bottom:1px dashed var(--line)}
+  .sg-item:last-child{border-bottom:0}
+  .sg-item .sg-icon{font-size:18px;flex:0 0 24px;text-align:center}
+  .sg-item .sg-content{flex:1;min-width:0}
+  .sg-item .sg-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+  .sg-item .sg-desc{font-size:12px;color:var(--muted);line-height:1.5}
+  .sg-item .sg-add{flex:0 0 auto;background:var(--panel2);border:1px solid var(--line);
+    color:var(--accent);font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer;
+    white-space:nowrap}
+  .sg-item .sg-add:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .sg-item .sg-add.added{background:var(--ok);border-color:var(--ok);color:#1f5a3a}
+  .sg-tip{background:rgba(244,168,196,.15);border:1px dashed var(--accent2);
+    border-radius:6px;padding:8px 12px;font-size:12px;color:var(--text);margin-bottom:10px}
+  .iv-card{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;
+    background:var(--panel2)}
+  .iv-card .iv-head{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+  .iv-card .iv-co{font-size:14px;font-weight:600;color:var(--text)}
+  .iv-card .iv-pill{font-size:11px;background:var(--accent);color:#fff;
+    padding:2px 8px;border-radius:10px}
+  .iv-card .iv-pill.r2{background:var(--accent2)}
+  .iv-card .iv-pill.r3{background:#b89bd9}
+  .iv-card .iv-pill.rhr{background:var(--ok)}
+  .iv-card .iv-date{color:var(--muted);font-size:12px}
+  .iv-card .iv-rate{margin-left:auto;font-size:14px}
+  .iv-card .iv-x{background:transparent;border:0;color:var(--muted);padding:2px 6px}
+  .iv-card .iv-x:hover{color:var(--bad)}
+  .iv-field{margin-top:8px}
+  .iv-field-label{font-size:11px;color:var(--muted);margin-bottom:3px}
+  .iv-field-text{font-size:13px;white-space:pre-wrap;line-height:1.55;color:var(--text)}
+  .iv-form{background:var(--panel2);border:1px dashed var(--accent);border-radius:8px;
+    padding:12px;margin-bottom:14px}
+  .iv-form .row2{display:grid;grid-template-columns:1fr 110px 140px 80px;gap:8px;margin-bottom:8px}
+  .iv-form textarea{min-height:60px;margin-bottom:8px}
+  .iv-form .actions{display:flex;gap:8px;justify-content:flex-end}
+  .tl-group{margin-top:14px}
+  .tl-group-head{font-size:13px;color:var(--muted);font-weight:600;
+    padding:6px 0;border-bottom:1px solid var(--line);margin-bottom:4px;
+    display:flex;align-items:baseline;gap:8px;cursor:pointer}
+  .tl-group-head .cnt{font-size:11px;background:var(--panel2);
+    border:1px solid var(--line);border-radius:10px;padding:1px 8px}
+  .tl-group-head .arrow{margin-left:auto;color:var(--muted);font-size:10px}
+  .tl-item{display:flex;gap:10px;align-items:center;padding:6px 4px;
+    border-bottom:1px dashed var(--line)}
+  .tl-item:hover{background:var(--panel2);border-radius:4px}
+  .tl-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent2);flex:0 0 16px}
+  .tl-item .when{flex:0 0 90px;color:var(--muted);font-size:11px;cursor:pointer}
+  .tl-item .when:hover{color:var(--accent)}
+  .tl-item .text{flex:1;font-size:13px;cursor:text}
+  .tl-item.done .text{color:var(--muted);text-decoration:line-through}
+  .tl-item.overdue .when{color:var(--bad)}
+  .tl-item .x{color:var(--muted);background:transparent;border:0;padding:2px 6px}
+  .tl-item .x:hover{color:var(--bad)}
+  .tl-tabs{display:flex;gap:4px}
+  .tl-tabs button{padding:4px 12px;font-size:12px}
+  .tl-tabs button.on{background:var(--accent2);border-color:var(--accent2);color:#fff}
+  .ms-row{display:grid;grid-template-columns:140px 1fr 50px 24px;gap:6px;
+    align-items:center;padding:4px 0;border-bottom:1px dashed var(--line)}
+  .ms-row:last-of-type{border-bottom:0}
+  .ms-row input[type=date]{padding:4px 6px;font-size:12px}
+  .ms-row input[type=text]{padding:4px 6px;font-size:13px}
+  .row{display:flex;gap:8px;align-items:center}
+  .row.gap-s{gap:6px}
+  .add-row{display:flex;gap:6px;margin-top:8px}
+  .add-row input{flex:1}
+  .muted{color:var(--muted);font-size:12px}
+  .small{font-size:12px}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;
+    background:var(--panel2);border:1px solid var(--line)}
+
+  /* Mock chart */
+  .chart{height:80px;width:100%;margin-top:6px}
+
+  /* Scrollbar */
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+  @media (max-width: 980px){
+    main{grid-template-columns:1fr;height:auto;overflow:auto}
+    .left,.right{overflow:visible}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>作战面板</h1>
+  <div class="countdowns" id="countdowns"></div>
+  <div style="flex:1"></div>
+  <button onclick="openReview()">📖 日记回顾</button>
+  <button onclick="openTodoList()">✅ 待办清单</button>
+  <button onclick="openSuggest()">💡 推荐</button>
+  <button onclick="exportData()">导出 JSON</button>
+  <button onclick="document.getElementById('imp').click()">导入</button>
+  <input type="file" id="imp" accept=".json" hidden onchange="importData(event)">
+</header>
+
+<main>
+  <div class="left">
+    <div class="card">
+      <div class="cal-head">
+        <button onclick="navMonth(-1)">‹</button>
+        <div class="title" id="mtitle"></div>
+        <div class="muted small" style="display:flex;gap:10px;align-items:center">
+          <span><span class="dot j" style="display:inline-block;vertical-align:middle;margin-right:3px"></span>日记</span>
+          <span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);vertical-align:middle;margin-right:3px"></span>待办</span>
+          <span><span class="dot i" style="display:inline-block;vertical-align:middle;margin-right:3px"></span>雅思</span>
+        </div>
+        <button onclick="goToday()">今天</button>
+        <button onclick="navMonth(1)">›</button>
+      </div>
+      <div class="grid7" id="dows"></div>
+      <div class="grid7" id="cal" style="margin-top:4px"></div>
+    </div>
+
+    <div class="card">
+      <h2>本周 <span class="muted small" id="wkrange"></span></h2>
+      <div class="week" id="week"></div>
+    </div>
+
+    <div class="card">
+      <h2>雅思备考 <span class="muted small">距 8.22 还有 <span id="ielts-cd"></span> 天</span></h2>
+      <div class="muted small">今日打卡（点击勾选）</div>
+      <div id="ielts-today"></div>
+      <h2 style="margin-top:14px">模考记录</h2>
+      <div class="mock mock-head">
+        <div>日期 / 备注</div><div>L</div><div>R</div><div>W</div><div>S</div><div>总分</div><div></div>
+      </div>
+      <div id="mocks"></div>
+      <div class="add-row">
+        <input id="mock-note" placeholder="模考备注（如 剑18 T1）">
+        <button onclick="addMock()">+ 添加</button>
+      </div>
+      <canvas class="chart" id="chart"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>秋招进度</h2>
+      <div id="cos"></div>
+      <div class="add-row">
+        <input id="co-name" placeholder="公司 / 岗位">
+        <button onclick="addCo()">+ 添加</button>
+      </div>
+      <div class="muted small" style="margin-top:8px">
+        状态：关注 → 简历投递 → 网申 → 笔试 → 一面 → 二面 → 三面 → Offer / 挂
+      </div>
+      <button onclick="openReviews()" style="margin-top:10px;width:100%">📝 面试复盘</button>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="card">
+      <div class="day-head">
+        <div>
+          <div class="d" id="sel-d"></div>
+          <div class="w" id="sel-w"></div>
+        </div>
+        <div class="muted small" id="sel-cd"></div>
+      </div>
+
+      <div class="muted small">心情</div>
+      <div class="moods" id="moods">
+        <button data-m="🔥">🔥</button>
+        <button data-m="😀">😀</button>
+        <button data-m="🥰">🥰</button>
+        <button data-m="😎">😎</button>
+        <button data-m="🤩">🤩</button>
+        <button data-m="😌">😌</button>
+        <button data-m="😐">😐</button>
+        <button data-m="🤔">🤔</button>
+        <button data-m="😪">😪</button>
+        <button data-m="😴">😴</button>
+        <button data-m="😫">😫</button>
+        <button data-m="😭">😭</button>
+        <button data-m="😤">😤</button>
+        <button data-m="🤯">🤯</button>
+        <button data-m="🤒">🤒</button>
+        <span id="custom-moods-slot"></span>
+        <button onclick="openEmojiPicker(event)" title="添加自定义心情" class="mood-add">＋</button>
+        <button data-m="">清除</button>
+      </div>
+
+      <div class="muted small">日记</div>
+      <textarea class="diary" id="diary" placeholder="今天发生了什么 / 状态如何 / 复盘…"></textarea>
+
+      <div class="row" style="margin-top:8px">
+        <button class="primary" onclick="saveDiary()">保存</button>
+        <span class="muted small" id="diary-status"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>当日待办</h2>
+      <div id="todos"></div>
+      <div class="add-row">
+        <input id="todo-new" placeholder="新待办，回车添加" onkeydown="if(event.key==='Enter')addTodo()">
+        <button onclick="addTodo()">+</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>关键节点</h2>
+      <div id="milestones"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ---------- Storage ---------- */
+const KEY = 'wfp-warroom-v1';
+const DEFAULTS = {
+  diary:{}, mood:{}, todos:{}, ielts:{}, mocks:[], companies:[],
+  events:{
+    '2026-07-15':'离职',
+    '2026-07-16':'休息周开始',
+    '2026-07-22':'休息周结束',
+    '2026-08-22':'雅思考试',
+    '2026-08-01':'秋招启动'
+  },
+  milestones:[
+    {date:'2026-07-15', label:'离职'},
+    {date:'2026-08-22', label:'雅思考试'},
+    {date:'2026-08-01', label:'秋招启动'},
+  ],
+  defaultCompanies:['字节飞书','阿里通义','腾讯','美团','Anthropic','月之暗面','智谱','阶跃星辰'],
+  customMoods:[],
+  reviews:[]
+};
+let DB = load();
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) {
+      const seeded = JSON.parse(JSON.stringify(DEFAULTS));
+      seeded.companies = DEFAULTS.defaultCompanies.map(n=>({name:n,status:'关注',note:''}));
+      return seeded;
+    }
+    const d = JSON.parse(raw);
+    // backfill
+    for(const k in DEFAULTS) if(!(k in d)) d[k] = JSON.parse(JSON.stringify(DEFAULTS[k]));
+    return d;
+  }catch(e){console.error(e);return JSON.parse(JSON.stringify(DEFAULTS));}
+}
+function save(){localStorage.setItem(KEY, JSON.stringify(DB));}
+
+/* ---------- Date helpers ---------- */
+const pad=n=>String(n).padStart(2,'0');
+const fmt=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseDate=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
+const daysBetween=(a,b)=>Math.round((parseDate(b)-parseDate(a))/86400000);
+const DOWS=['一','二','三','四','五','六','日'];
+const wkLabel=d=>'周'+DOWS[(d.getDay()+6)%7];
+
+let viewDate = today();        // month being viewed
+let selDate = fmt(today());    // selected day key
+
+/* ---------- Lunar (1900-2100) ---------- */
+const LUNAR_INFO = [
+  0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
+  0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
+  0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
+  0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
+  0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
+  0x06ca0,0x0b550,0x15355,0x04da0,0x0a5b0,0x14573,0x052b0,0x0a9a8,0x0e950,0x06aa0,
+  0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,
+  0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b6a0,0x195a6,
+  0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,
+  0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x055c0,0x0ab60,0x096d5,0x092e0,
+  0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5,
+  0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930,
+  0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530,
+  0x05aa0,0x076a3,0x096d0,0x04afb,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,0x0d520,0x0dd45,
+  0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0,
+  0x14b63,0x09370,0x049f8,0x04970,0x064b0,0x168a6,0x0ea50,0x06b20,0x1a6c4,0x0aae0,
+  0x0a2e0,0x0d2e3,0x0c960,0x0d557,0x0d4a0,0x0da50,0x05d55,0x056a0,0x0a6d0,0x055d4,
+  0x052d0,0x0a9b8,0x0a950,0x0b4a0,0x0b6a6,0x0ad50,0x055a0,0x0aba4,0x0a5b0,0x052b0,
+  0x0b273,0x06930,0x07337,0x06aa0,0x0ad50,0x14b55,0x04b60,0x0a570,0x054e4,0x0d160,
+  0x0e968,0x0d520,0x0daa0,0x16aa6,0x056d0,0x04ae0,0x0a9d4,0x0a2d0,0x0d150,0x0f252,
+  0x0d520
+];
+const LUNAR_MONTHS = ['正','二','三','四','五','六','七','八','九','十','冬','腊'];
+const LUNAR_DAYS = ['初一','初二','初三','初四','初五','初六','初七','初八','初九','初十',
+  '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十',
+  '廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
+// 公历节日 MM-DD
+const SOLAR_FESTIVALS = {
+  '01-01':'元旦','02-14':'情人节','03-08':'妇女节','03-12':'植树节',
+  '05-01':'劳动节','05-04':'青年节','06-01':'儿童节','07-01':'建党节',
+  '08-01':'建军节','09-10':'教师节','10-01':'国庆','12-24':'平安夜','12-25':'圣诞'
+};
+// 农历节日 MM-DD（农历）
+const LUNAR_FESTIVALS = {
+  '1-1':'春节','1-15':'元宵','5-5':'端午','7-7':'七夕','7-15':'中元','8-15':'中秋','9-9':'重阳','12-8':'腊八','12-23':'小年'
+};
+
+function lunarYearDays(y){
+  let sum=348;
+  for(let i=0x8000;i>0x8;i>>=1) sum += (LUNAR_INFO[y-1900]&i)?1:0;
+  return sum + leapDays(y);
+}
+function leapMonth(y){return LUNAR_INFO[y-1900]&0xf;}
+function leapDays(y){
+  if(leapMonth(y)) return (LUNAR_INFO[y-1900]&0x10000)?30:29;
+  return 0;
+}
+function monthDays(y,m){return (LUNAR_INFO[y-1900]&(0x10000>>m))?30:29;}
+
+function solarToLunar(date){
+  const baseDate = new Date(1900,0,31);
+  let offset = Math.floor((date - baseDate)/86400000);
+  let y, t, lm=0, isLeap=false;
+  for(y=1900; y<2100 && offset>0; y++){
+    t = lunarYearDays(y);
+    if(offset<t) break;
+    offset -= t;
+  }
+  const leap = leapMonth(y);
+  let m;
+  for(m=1; m<=12 && offset>0; m++){
+    if(leap>0 && m===leap+1 && !isLeap){
+      m--; isLeap=true; t = leapDays(y);
+    } else {
+      t = monthDays(y,m);
+    }
+    if(isLeap && m===leap+1) isLeap=false;
+    if(offset<t) break;
+    offset -= t;
+  }
+  if(offset===0 && leap>0 && m===leap+1){
+    if(isLeap){isLeap=false;} else {isLeap=true; m--;}
+  }
+  const d = offset+1;
+  return {y, m, d, isLeap};
+}
+
+function lunarLabel(date){
+  try{
+    const l = solarToLunar(date);
+    // 公历节日优先
+    const mmdd = pad(date.getMonth()+1)+'-'+pad(date.getDate());
+    if(SOLAR_FESTIVALS[mmdd]) return {text:SOLAR_FESTIVALS[mmdd], festival:true};
+    // 农历节日
+    const lkey = l.m+'-'+l.d;
+    if(!l.isLeap && LUNAR_FESTIVALS[lkey]) return {text:LUNAR_FESTIVALS[lkey], festival:true};
+    // 初一显示月份
+    if(l.d===1) return {text:(l.isLeap?'闰':'')+LUNAR_MONTHS[l.m-1]+'月', festival:false};
+    return {text:LUNAR_DAYS[l.d-1], festival:false};
+  }catch(e){return null;}
+}
+
+function renderCountdowns(){
+  const t = fmt(today());
+  // 取关键节点里：未来的全部 + 最近过去 1 个，最多 4 个
+  const sorted = DB.milestones.slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const future = sorted.filter(m=>m.date>=t);
+  const past = sorted.filter(m=>m.date<t).slice(-1);
+  const items = past.concat(future).slice(0,4);
+  const el = document.getElementById('countdowns');
+  el.innerHTML = items.map(it=>{
+    const d = daysBetween(t, it.date);
+    let cls='';
+    if(d<0) cls='bad';
+    else if(d<=14) cls='warn';
+    const txt = d>0 ? `${d} 天` : (d===0?'今天':`${-d} 天前`);
+    return `<div class="cd ${cls}"><span class="n">${txt}</span><span class="lbl">${it.label} ${it.date.slice(5)}</span></div>`;
+  }).join('') || '<div class="muted small">还没有关键节点</div>';
+}
+
+/* ---------- Calendar ---------- */
+function renderDows(){
+  document.getElementById('dows').innerHTML =
+    DOWS.map(d=>`<div class="dow">${d}</div>`).join('');
+}
+function renderCal(){
+  const y=viewDate.getFullYear(), m=viewDate.getMonth();
+  document.getElementById('mtitle').textContent = `${y} 年 ${m+1} 月`;
+  const first = new Date(y,m,1);
+  const startOffset = (first.getDay()+6)%7; // Mon=0
+  const start = new Date(y,m,1-startOffset);
+  const t = fmt(today());
+  let html='';
+  for(let i=0;i<42;i++){
+    const d = new Date(start); d.setDate(start.getDate()+i);
+    const k = fmt(d);
+    const other = d.getMonth()!==m;
+    const isToday = k===t;
+    const isSel = k===selDate;
+    const hasJ = !!DB.diary[k];
+    const todos = DB.todos[k]||[];
+    const hasT = todos.length>0;
+    const ielts = DB.ielts[k]||{};
+    const hasI = Object.values(ielts).some(Boolean);
+    const ev = DB.events[k];
+    const mood = DB.mood[k]||'';
+    // 待办预览：最多 3 条
+    const MAX_TD = 3;
+    const tdHtml = todos.slice(0,MAX_TD).map(t=>
+      `<div class="td ${t.done?'done':''}" title="${escapeAttr(t.text)}">${escapeHTML(t.text)}</div>`
+    ).join('') + (todos.length>MAX_TD ? `<div class="td more">+${todos.length-MAX_TD} 项</div>` : '');
+    html += `<div class="day ${other?'other':''} ${isToday?'today':''} ${isSel?'selected':''}"
+      onclick="selectDay('${k}')">
+      <div class="dn">${d.getDate()}</div>
+      ${(()=>{const l=lunarLabel(d);return l?`<div class="ln ${l.festival?'festival':''}">${l.text}</div>`:'';})()}
+      ${ev?`<div class="ev">${ev}</div>`:''}
+      ${mood?`<div class="mood">${mood}</div>`:''}
+      ${hasT?`<div class="todos">${tdHtml}</div>`:''}
+      <div class="dots">
+        ${hasJ?'<span class="dot j"></span>':''}
+        ${hasI?'<span class="dot i"></span>':''}
+      </div>
+    </div>`;
+  }
+  document.getElementById('cal').innerHTML = html;
+}
+function navMonth(n){viewDate=new Date(viewDate.getFullYear(),viewDate.getMonth()+n,1);renderCal();}
+function goToday(){viewDate=today();selectDay(fmt(today()));}
+
+/* ---------- Week strip ---------- */
+function renderWeek(){
+  const t = today();
+  const off = (t.getDay()+6)%7;
+  const mon = new Date(t); mon.setDate(t.getDate()-off);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+  document.getElementById('wkrange').textContent =
+    `${pad(mon.getMonth()+1)}.${pad(mon.getDate())} – ${pad(sun.getMonth()+1)}.${pad(sun.getDate())}`;
+  let html='';
+  for(let i=0;i<7;i++){
+    const d=new Date(mon); d.setDate(mon.getDate()+i);
+    const k=fmt(d);
+    const isT=k===fmt(today());
+    const diary = (DB.diary[k]||'').slice(0,80);
+    const todos = (DB.todos[k]||[]);
+    const undone = todos.filter(x=>!x.done).length;
+    const ev = DB.events[k];
+    html += `<div class="wd ${isT?'today':''}" onclick="selectDay('${k}')">
+      <div class="h"><span class="dn">${d.getDate()}</span><span class="lbl">${wkLabel(d)}</span></div>
+      ${ev?`<div class="lbl" style="color:var(--warn)">${ev}</div>`:''}
+      ${undone?`<div class="lbl">📋 ${undone} 待办</div>`:''}
+      <div class="mini">${diary||''}</div>
+    </div>`;
+  }
+  document.getElementById('week').innerHTML = html;
+}
+
+/* ---------- Day panel ---------- */
+function selectDay(k){
+  selDate=k;
+  const d = parseDate(k);
+  document.getElementById('sel-d').textContent = `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}`;
+  document.getElementById('sel-w').textContent = wkLabel(d);
+  const diff = daysBetween(fmt(today()), k);
+  const cd = diff===0?'今天':(diff>0?`${diff} 天后`:`${-diff} 天前`);
+  document.getElementById('sel-cd').textContent = cd;
+  document.getElementById('diary').value = DB.diary[k]||'';
+  document.getElementById('diary-status').textContent='';
+  // moods
+  const m = DB.mood[k]||'';
+  document.querySelectorAll('#moods button').forEach(b=>{
+    b.classList.toggle('on', b.dataset.m===m && m!=='');
+  });
+  renderTodos();
+  renderIeltsToday();
+  renderCustomMoods();
+  renderCal();
+}
+function setMood(m){
+  if(m) DB.mood[selDate]=m; else delete DB.mood[selDate];
+  save(); selectDay(selDate); renderWeek();
+}
+document.getElementById('moods').addEventListener('click',e=>{
+  const b = e.target.closest('button[data-m]');
+  if(!b) return;
+  setMood(b.dataset.m);
+});
+
+/* ---------- Custom moods (emoji picker) ---------- */
+const EMOJI_CATS = [
+  {icon:'😀', name:'笑脸', list:['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🫡','🤭','🤫','🤔','🫢','🤐','🤨','😐','😑','😶','🫥','😏','😒','🙄','😬','😮‍💨','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','😵‍💫','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','🫤','😟','🙁','☹️','😮','😯','😲','😳','🥺','🥹','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','💩','🤡','👻','👽','🤖']},
+  {icon:'🧑', name:'人物', list:['👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵','🙍','🙎','🙅','🙆','💁','🙋','🧏','🙇','🤦','🤷','🧑‍🎓','👨‍🎓','👩‍🎓','🧑‍🏫','🧑‍⚕️','🧑‍💻','👨‍💻','👩‍💻','🧑‍💼','🧑‍🔧','🧑‍🏭','🧑‍🌾','🧑‍🍳','🧑‍🔬','🧑‍🎨','🧑‍🚀','🧑‍🚒','👮','🕵️','💂','🥷','👷','🤴','👸','👳','👲','🧕','🤵','👰','🤰','🫃','🫄','🤱','👼','🎅','🤶','🦸','🦹','🧙','🧚','🧛','🧜','🧝','🧞','🧟','💆','💇','🚶','🧍','🧎','🏃','💃','🕺','🕴️','👯','🧖','🧗','👫','👬','👭','💏','💑','👪','🗣️','👤','👥','🫂','👣']},
+  {icon:'❤️', name:'爱心', list:['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','💖','💗','💓','💞','💕','💟','❣️','💝','💘','💌']},
+  {icon:'👍', name:'手势', list:['👍','👎','👌','🤌','🤏','✌️','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','🫵','👋','🤚','🖐️','✋','🖖','🫱','🫲','🫳','🫴','👏','🙌','👐','🤲','🤝','🙏','✍️','💪','🦾']},
+  {icon:'🐶', name:'动物', list:['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐻‍❄️','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐢','🐍','🦎','🐳','🐬','🐟','🐠','🦈','🦀','🐙','🦑','🌸','🌹','🌷','🌻','🌼','💐','🍀','🌿']},
+  {icon:'🍕', name:'食物', list:['🍎','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🫑','🌽','🥕','🫒','🧄','🧅','🥔','🍠','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🥪','🌮','🌯','🫔','🥙','🧆','🥗','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🍤','🍙','🍚','🍘','🍥','🥮','🍢','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','☕','🍵','🥤','🧃','🧉','🍶','🍺','🍷','🍸','🍹','🍾']},
+  {icon:'⚽', name:'活动', list:['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🏹','🎣','🤿','🥊','🥋','🎽','🛹','🛼','🛷','⛸️','🥌','🎿','⛷️','🏂','🏋️','🤸','🤺','⛹️','🤾','🏌️','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚴','🚵','🏆','🥇','🥈','🥉','🏅','🎖️','🎗️','🎫','🎟️','🎪','🤹','🎭','🩰','🎨','🎬','🎤','🎧','🎼','🎹','🥁','🎷','🎺','🎸','🪕','🎻','🎲','♟️','🎯','🎳','🎮','🎰','🧩']},
+  {icon:'🌍', name:'地点', list:['🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩️','🕋','⛲','⛺','🌁','🌃','🏙️','🌄','🌅','🌆','🌇','🌉','🌊','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🏞️','🌍','🌎','🌏','🌐','🗺️']},
+  {icon:'💡', name:'物品', list:['⌚','📱','💻','⌨️','🖥️','🖨️','🖱️','📷','📸','📹','🎥','📽️','📺','📟','📞','☎️','📠','📡','🔋','🪫','🔌','💡','🔦','🕯️','🗑️','🛢️','💸','💵','💴','💶','💷','🪙','💰','💳','💎','⚖️','🧰','🪛','🔧','🔨','⚒️','🛠️','⛏️','🪓','🪚','🔩','⚙️','🪤','🧱','⛓️','🧲','🔫','💣','🧨','🪃','🏹','🛡️','🪜','🧪','🧬','🔬','🔭','📡','💊','💉','🩸','🩹','🩺','🩻','🚪','🪟','🛏️','🛋️','🪑','🚽','🪠','🚿','🛁','🪥','🧴','🧷','🧹','🧺','🧻','🪣','🧼','🫧','🪒','🧽','🧯','🛒','🚬','⚰️','⚱️']},
+  {icon:'⭐', name:'符号', list:['❗','❓','❕','❔','‼️','⁉️','⭐','🌟','✨','⚡','☄️','💥','🔥','🌈','☀️','🌤️','⛅','🌥️','☁️','🌦️','🌧️','⛈️','🌩️','🌨️','❄️','☃️','⛄','💨','💧','💦','☔','☂️','🌊','♥️','♦️','♣️','♠️','✅','❌','⛔','🚫','💯','💢','💬','💭','🗯️']}
+];
+
+let emojiCurrentCat = 0;
+function openEmojiPicker(e){
+  e.stopPropagation();
+  let pop = document.getElementById('emoji-pop');
+  if(!pop){
+    pop = document.createElement('div');
+    pop.id = 'emoji-pop';
+    pop.className = 'emoji-pop';
+    pop.innerHTML = `
+      <div class="emoji-cats" id="emoji-cats"></div>
+      <div class="emoji-grid" id="emoji-grid"></div>`;
+    document.body.appendChild(pop);
+    pop.addEventListener('click',e=>e.stopPropagation());
+    document.addEventListener('click',()=>pop.classList.remove('on'));
+  }
+  // 渲染分类 tab
+  document.getElementById('emoji-cats').innerHTML = EMOJI_CATS.map((c,i)=>
+    `<button class="${i===emojiCurrentCat?'on':''}" title="${c.name}" onclick="switchEmojiCat(${i})">${c.icon}</button>`
+  ).join('');
+  renderEmojiGrid();
+  // 定位到点击位置附近
+  const rect = e.currentTarget.getBoundingClientRect();
+  pop.style.left = Math.min(rect.left, window.innerWidth-360)+'px';
+  pop.style.top = (rect.bottom + 6)+'px';
+  pop.classList.add('on');
+}
+function switchEmojiCat(i){
+  emojiCurrentCat = i;
+  document.querySelectorAll('#emoji-cats button').forEach((b,idx)=>{
+    b.classList.toggle('on', idx===i);
+  });
+  renderEmojiGrid();
+}
+function renderEmojiGrid(){
+  document.getElementById('emoji-grid').innerHTML = EMOJI_CATS[emojiCurrentCat].list
+    .map(em=>`<button onclick="addCustomMood('${em}')">${em}</button>`).join('');
+}
+function addCustomMood(em){
+  if(!DB.customMoods) DB.customMoods=[];
+  // 内置已有的就直接选上，不重复加
+  const builtins = ['🔥','😀','🥰','😎','🤩','😌','😐','🤔','😪','😴','😫','😭','😤','🤯','🤒'];
+  if(!builtins.includes(em) && !DB.customMoods.includes(em)){
+    DB.customMoods.push(em);
+    save();
+    renderCustomMoods();
+  }
+  setMood(em);
+  document.getElementById('emoji-pop').classList.remove('on');
+}
+function delCustomMood(em, ev){
+  ev.stopPropagation();
+  DB.customMoods = (DB.customMoods||[]).filter(x=>x!==em);
+  save();
+  renderCustomMoods();
+  // 如果当前选中的就是这个，清除
+  if(DB.mood[selDate]===em){
+    delete DB.mood[selDate];
+    save(); selectDay(selDate); renderCal(); renderWeek();
+  }
+}
+function renderCustomMoods(){
+  const slot = document.getElementById('custom-moods-slot');
+  if(!slot) return;
+  const list = DB.customMoods||[];
+  slot.innerHTML = list.map(em=>`
+    <span class="custom-wrap">
+      <button data-m="${em}">${em}</button>
+      <button class="del" onclick="delCustomMood('${em}',event)" title="删除">×</button>
+    </span>
+  `).join('');
+  // 重新激活当前选中态
+  const cur = DB.mood[selDate]||'';
+  if(cur){
+    slot.querySelectorAll('button[data-m]').forEach(b=>{
+      b.classList.toggle('on', b.dataset.m===cur);
+    });
+  }
+}
+function saveDiary(){
+  const v = document.getElementById('diary').value.trim();
+  if(v) DB.diary[selDate]=v; else delete DB.diary[selDate];
+  save();
+  document.getElementById('diary-status').textContent = '已保存 · '+new Date().toLocaleTimeString();
+  renderCal(); renderWeek();
+}
+
+/* ---------- Todos ---------- */
+function renderTodos(){
+  const list = DB.todos[selDate]||[];
+  document.getElementById('todos').innerHTML = list.map((t,i)=>`
+    <div class="todo ${t.done?'done':''}">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTodo(${i})">
+      <div class="t">${escapeHTML(t.text)}</div>
+      <button class="x" onclick="delTodo(${i})">✕</button>
+    </div>
+  `).join('') || '<div class="muted small">还没有待办</div>';
+}
+function addTodo(){
+  const inp = document.getElementById('todo-new');
+  const v = inp.value.trim(); if(!v) return;
+  if(!DB.todos[selDate]) DB.todos[selDate]=[];
+  DB.todos[selDate].push({text:v,done:false});
+  inp.value=''; save(); renderTodos(); renderCal(); renderWeek();
+}
+function toggleTodo(i){DB.todos[selDate][i].done=!DB.todos[selDate][i].done;save();renderTodos();}
+function delTodo(i){DB.todos[selDate].splice(i,1);if(!DB.todos[selDate].length)delete DB.todos[selDate];save();renderTodos();renderCal();renderWeek();}
+
+/* ---------- IELTS ---------- */
+const IELTS_SKILLS = [['L','听力'],['R','阅读'],['W','写作'],['S','口语']];
+function renderIeltsToday(){
+  document.getElementById('ielts-cd').textContent = daysBetween(fmt(today()),'2026-08-22');
+  const k = selDate;
+  const data = DB.ielts[k]||{};
+  document.getElementById('ielts-today').innerHTML = `
+    <div class="ielts-row">
+      <div class="lab">${k===fmt(today())?'今天':k.slice(5)}</div>
+      <div class="ielts-checks">
+        ${IELTS_SKILLS.map(([s,l])=>`
+          <button class="${data[s]?'on':''}" onclick="toggleIelts('${s}')" title="${l}">${s}</button>
+        `).join('')}
+      </div>
+    </div>`;
+  renderMocks();
+}
+function toggleIelts(s){
+  if(!DB.ielts[selDate]) DB.ielts[selDate]={};
+  DB.ielts[selDate][s] = !DB.ielts[selDate][s];
+  if(!Object.values(DB.ielts[selDate]).some(Boolean)) delete DB.ielts[selDate];
+  save(); renderIeltsToday(); renderCal();
+}
+function ieltsOverall(m){
+  const v = ['L','R','W','S'].map(k=>parseFloat(m[k]));
+  if(v.some(isNaN)) return null;
+  // 官方算法：四项算术平均 → 取最近的 0.5（.25→.5, .75→上一整数）
+  const avg = v.reduce((a,b)=>a+b,0)/4;
+  return Math.round(avg*2)/2;
+}
+function renderMocks(){
+  document.getElementById('mocks').innerHTML = DB.mocks.map((m,i)=>{
+    const ov = ieltsOverall(m);
+    return `
+    <div class="mock">
+      <div title="${m.date}">${m.note||m.date.slice(5)}</div>
+      <input type="number" step="0.5" min="0" max="9" value="${m.L||''}" onchange="updMock(${i},'L',this.value)">
+      <input type="number" step="0.5" min="0" max="9" value="${m.R||''}" onchange="updMock(${i},'R',this.value)">
+      <input type="number" step="0.5" min="0" max="9" value="${m.W||''}" onchange="updMock(${i},'W',this.value)">
+      <input type="number" step="0.5" min="0" max="9" value="${m.S||''}" onchange="updMock(${i},'S',this.value)">
+      <div class="ov">${ov!=null?ov.toFixed(1):'—'}</div>
+      <button class="x" onclick="delMock(${i})">✕</button>
+    </div>`;
+  }).join('') || '<div class="muted small">暂无模考记录</div>';
+  drawChart();
+}
+function addMock(){
+  const note = document.getElementById('mock-note').value.trim();
+  DB.mocks.push({date:fmt(today()),note,L:'',R:'',W:'',S:''});
+  document.getElementById('mock-note').value='';
+  save(); renderMocks();
+}
+function updMock(i,k,v){DB.mocks[i][k]=v;save();renderMocks();}
+function delMock(i){DB.mocks.splice(i,1);save();renderMocks();}
+function drawChart(){
+  const c = document.getElementById('chart');
+  const dpr = window.devicePixelRatio||1;
+  const w = c.clientWidth, h = c.clientHeight;
+  c.width=w*dpr; c.height=h*dpr;
+  const ctx = c.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+  const data = DB.mocks.map(m=>ieltsOverall(m));
+  const pts = data.filter(x=>x!=null);
+  if(!pts.length){
+    ctx.fillStyle='#8aa0b4'; ctx.font='12px sans-serif';
+    ctx.fillText('（输入分数后显示总分曲线）',8,h/2); return;
+  }
+  // grid - 淡色参考线
+  const min=4, max=9;
+  ctx.strokeStyle='rgba(138,160,180,.18)';
+  ctx.lineWidth=1;
+  for(let v=4;v<=9;v++){
+    const y = h-(v-min)/(max-min)*(h-20)-10;
+    ctx.beginPath();ctx.moveTo(30,y);ctx.lineTo(w-8,y);ctx.stroke();
+    ctx.fillStyle='#8aa0b4';ctx.font='10px sans-serif';
+    ctx.fillText(v,4,y+3);
+  }
+  // line + points
+  ctx.strokeStyle='var(--accent)';
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7fb3e6';
+  ctx.fillStyle = ctx.strokeStyle;
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  let started=false;
+  data.forEach((v,i)=>{
+    if(v==null){started=false;return;}
+    const x = 30+(i/(Math.max(1,data.length-1)))*(w-40);
+    const y = h-(v-min)/(max-min)*(h-20)-10;
+    if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  data.forEach((v,i)=>{
+    if(v==null) return;
+    const x = 30+(i/(Math.max(1,data.length-1)))*(w-40);
+    const y = h-(v-min)/(max-min)*(h-20)-10;
+    ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();
+  });
+}
+
+/* ---------- Companies ---------- */
+const STATUSES = ['关注','简历投递','网申','笔试','一面','二面','三面','Offer','挂'];
+function renderCos(){
+  document.getElementById('cos').innerHTML = DB.companies.map((c,i)=>`
+    <div class="co s-${c.status==='Offer'?'offer':c.status==='挂'?'rej':''}"
+      draggable="true" data-idx="${i}"
+      ondragstart="coDragStart(event,${i})"
+      ondragend="coDragEnd(event)"
+      ondragover="coDragOver(event)"
+      ondragleave="coDragLeave(event)"
+      ondrop="coDrop(event,${i})">
+      <span class="drag" title="拖动排序">⋮⋮</span>
+      <input type="text" class="nm" value="${escapeAttr(c.name)}" onchange="updCo(${i},'name',this.value)">
+      <select class="st-${c.status}" onchange="updCo(${i},'status',this.value)">
+        ${STATUSES.map(s=>`<option ${s===c.status?'selected':''}>${s}</option>`).join('')}
+      </select>
+      <button class="x" onclick="delCo(${i})">✕</button>
+    </div>
+  `).join('') || '<div class="muted small">还没有公司</div>';
+}
+let coDragSrc = null;
+function coDragStart(e,i){
+  coDragSrc = i;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  // Firefox 需要 setData 才能触发 drag
+  try{ e.dataTransfer.setData('text/plain', String(i)); }catch(_){}
+}
+function coDragEnd(e){
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.co.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  coDragSrc = null;
+}
+function coDragOver(e){
+  if(coDragSrc===null) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+function coDragLeave(e){
+  e.currentTarget.classList.remove('drag-over');
+}
+function coDrop(e, target){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(coDragSrc===null || coDragSrc===target) return;
+  const [moved] = DB.companies.splice(coDragSrc, 1);
+  // 拖到原位置之后的目标，索引会因移除而 -1，但放进 target 位置就是用户期望的视觉位置
+  const insertAt = coDragSrc < target ? target : target;
+  DB.companies.splice(insertAt, 0, moved);
+  save(); renderCos();
+}
+function addCo(){
+  const v = document.getElementById('co-name').value.trim(); if(!v) return;
+  DB.companies.push({name:v,status:'关注',note:''});
+  document.getElementById('co-name').value=''; save(); renderCos();
+}
+function updCo(i,k,v){DB.companies[i][k]=v;save();renderCos();}
+function delCo(i){DB.companies.splice(i,1);save();renderCos();}
+
+/* ---------- Milestones ---------- */
+function renderMilestones(){
+  const t = fmt(today());
+  const sorted = DB.milestones.slice()
+    .map((m,origIdx)=>({...m,origIdx}))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  document.getElementById('milestones').innerHTML = sorted.map(m=>{
+      const d = daysBetween(t, m.date);
+      const cls = d<0?'muted':(d<=14?'warn':'');
+      const txt = d>0?`+${d}d`:(d===0?'今日':`${d}d`);
+      return `<div class="ms-row">
+        <input type="date" value="${m.date}" onchange="updMs(${m.origIdx},'date',this.value)">
+        <input type="text" value="${escapeAttr(m.label)}" onchange="updMs(${m.origIdx},'label',this.value)">
+        <span class="${cls} small" style="min-width:50px;text-align:right">${txt}</span>
+        <button class="x" onclick="delMs(${m.origIdx})">✕</button>
+      </div>`;
+    }).join('') || '<div class="muted small">还没有关键节点</div>';
+  // 添加行
+  document.getElementById('milestones').insertAdjacentHTML('beforeend', `
+    <div class="add-row" style="margin-top:8px">
+      <input type="date" id="ms-date" style="flex:0 0 140px">
+      <input type="text" id="ms-label" placeholder="节点名称">
+      <button onclick="addMs()">+</button>
+    </div>`);
+}
+function addMs(){
+  const date = document.getElementById('ms-date').value;
+  const label = document.getElementById('ms-label').value.trim();
+  if(!date || !label){ alert('请填写日期和名称'); return; }
+  DB.milestones.push({date,label});
+  save(); rerenderAll();
+}
+function updMs(i,k,v){
+  if(k==='label') v = v.trim();
+  if(!v){ alert('不能为空'); renderMilestones(); return; }
+  DB.milestones[i][k]=v; save(); renderCountdowns(); renderMilestones(); renderCal(); renderWeek();
+}
+function delMs(i){
+  if(!confirm(`删除节点「${DB.milestones[i].label}」？`)) return;
+  DB.milestones.splice(i,1); save(); rerenderAll();
+}
+
+/* ---------- Import / Export ---------- */
+function exportData(){
+  const blob = new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `warroom-${fmt(today())}.json`; a.click();
+}
+function importData(e){
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      const d = JSON.parse(r.result);
+      if(!confirm('导入会覆盖当前所有数据，确定吗？')) return;
+      DB = d; save(); rerenderAll();
+    }catch(err){alert('JSON 解析失败：'+err.message);}
+  };
+  r.readAsText(f);
+}
+
+/* ---------- Utils ---------- */
+function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function escapeAttr(s){return escapeHTML(s);}
+
+/* ---------- Init ---------- */
+function rerenderAll(){
+  renderCountdowns(); renderDows(); renderCal(); renderWeek();
+  selectDay(selDate); renderCos(); renderMilestones();
+}
+rerenderAll();
+window.addEventListener('resize', drawChart);
+</script>
+<div class="modal-mask" id="review-mask" onclick="if(event.target===this)closeReview()">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>日记回顾</h3>
+      <div class="filters">
+        <select id="rv-month" onchange="onMonthChange()"></select>
+        <input type="date" id="rv-date" onchange="onDateChange()" title="跳转到具体日期">
+        <input type="text" id="rv-q" placeholder="搜索关键词…" oninput="renderReview()" style="width:160px">
+        <button onclick="clearFilters()" title="清除筛选">清除</button>
+      </div>
+      <button class="modal-close" onclick="closeReview()">✕</button>
+    </div>
+    <div class="modal-body" id="rv-body"></div>
+  </div>
+</div>
+
+<script>
+function openReview(){
+  buildMonthOptions();
+  document.getElementById('review-mask').classList.add('on');
+  renderReview();
+}
+function closeReview(){
+  document.getElementById('review-mask').classList.remove('on');
+}
+function buildMonthOptions(){
+  const keys = new Set();
+  Object.keys(DB.diary).forEach(k=>keys.add(k.slice(0,7)));
+  Object.keys(DB.mood).forEach(k=>keys.add(k.slice(0,7)));
+  const months = [...keys].sort().reverse();
+  const sel = document.getElementById('rv-month');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">全部月份</option>' +
+    months.map(m=>`<option value="${m}">${m}</option>`).join('');
+  if(cur && months.includes(cur)) sel.value = cur;
+}
+function renderReview(){
+  const month = document.getElementById('rv-month').value;
+  const date = document.getElementById('rv-date').value;
+  const q = document.getElementById('rv-q').value.trim().toLowerCase();
+  // 合并所有有 diary 或 mood 的日期
+  const keys = new Set([...Object.keys(DB.diary), ...Object.keys(DB.mood)]);
+  let entries = [...keys].map(k=>({
+    k, diary: DB.diary[k]||'', mood: DB.mood[k]||''
+  }));
+  if(date) entries = entries.filter(e=>e.k===date);
+  else if(month) entries = entries.filter(e=>e.k.startsWith(month));
+  if(q) entries = entries.filter(e=>e.diary.toLowerCase().includes(q));
+  entries.sort((a,b)=>b.k.localeCompare(a.k));
+
+  // mood stats
+  const moodCount = {};
+  entries.forEach(e=>{ if(e.mood) moodCount[e.mood]=(moodCount[e.mood]||0)+1; });
+  const total = entries.length;
+  const withDiary = entries.filter(e=>e.diary).length;
+  const stats = `
+    <div class="mood-stats">
+      <span class="mood-stat">📅 ${total} 天</span>
+      <span class="mood-stat">📝 ${withDiary} 篇日记</span>
+      ${Object.entries(moodCount).sort((a,b)=>b[1]-a[1])
+        .map(([m,n])=>`<span class="mood-stat">${m} ${n}</span>`).join('')}
+    </div>`;
+
+  const t = fmt(today());
+  const body = entries.map(e=>{
+    const d = parseDate(e.k);
+    const diff = daysBetween(t, e.k);
+    const cd = diff===0?'今天':(diff>0?`${diff} 天后`:`${-diff} 天前`);
+    const text = e.diary
+      ? (q ? highlight(escapeHTML(e.diary), q) : escapeHTML(e.diary))
+      : '（仅心情记录，无日记）';
+    return `<div class="entry ${e.diary?'':'no-text'}" onclick="jumpFromReview('${e.k}')">
+      <div class="entry-head">
+        <span class="entry-date">${e.k}</span>
+        <span class="entry-week">${wkLabel(d)}</span>
+        <span class="entry-cd">${cd}</span>
+        <span class="entry-mood">${e.mood||''}</span>
+      </div>
+      <div class="entry-text">${text}</div>
+    </div>`;
+  }).join('') || '<div class="muted small" style="padding:20px 0;text-align:center">没有匹配的记录</div>';
+
+  document.getElementById('rv-body').innerHTML = stats + body;
+}
+function highlight(html, q){
+  // q 已经是 lower-case，html 是已 escape 的；做 case-insensitive 替换
+  const re = new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+  return html.replace(re,'<mark>$1</mark>');
+}
+function onMonthChange(){
+  // 选月份时清掉具体日期，避免冲突
+  document.getElementById('rv-date').value='';
+  renderReview();
+}
+function onDateChange(){
+  // 选具体日期时清掉月份
+  document.getElementById('rv-month').value='';
+  renderReview();
+}
+function clearFilters(){
+  document.getElementById('rv-month').value='';
+  document.getElementById('rv-date').value='';
+  document.getElementById('rv-q').value='';
+  renderReview();
+}
+function jumpFromReview(k){
+  const d = parseDate(k);
+  viewDate = new Date(d.getFullYear(), d.getMonth(), 1);
+  selectDay(k);
+  closeReview();
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeReview();
+});
+</script>
+
+<div class="modal-mask" id="todo-mask" onclick="if(event.target===this)closeTodoList()">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>待办清单</h3>
+      <div class="filters">
+        <div class="tl-tabs" id="tl-tabs">
+          <button data-f="all" class="on" onclick="setTodoFilter('all')">全部</button>
+          <button data-f="todo" onclick="setTodoFilter('todo')">未完成</button>
+          <button data-f="done" onclick="setTodoFilter('done')">已完成</button>
+          <button data-f="overdue" onclick="setTodoFilter('overdue')">逾期</button>
+        </div>
+        <input type="text" id="tl-q" placeholder="搜索…" oninput="renderTodoList()" style="width:140px">
+      </div>
+      <button class="modal-close" onclick="closeTodoList()">✕</button>
+    </div>
+    <div class="modal-body" id="tl-body"></div>
+  </div>
+</div>
+
+<script>
+let TODO_FILTER = 'all';
+function openTodoList(){
+  document.getElementById('todo-mask').classList.add('on');
+  renderTodoList();
+}
+function closeTodoList(){
+  document.getElementById('todo-mask').classList.remove('on');
+}
+function setTodoFilter(f){
+  TODO_FILTER = f;
+  document.querySelectorAll('#tl-tabs button').forEach(b=>{
+    b.classList.toggle('on', b.dataset.f===f);
+  });
+  renderTodoList();
+}
+function renderTodoList(){
+  const q = document.getElementById('tl-q').value.trim().toLowerCase();
+  const t = fmt(today());
+  // 摊平：[{date, idx, text, done}]
+  let items = [];
+  Object.keys(DB.todos).forEach(date=>{
+    DB.todos[date].forEach((todo,idx)=>{
+      items.push({date, idx, text:todo.text, done:todo.done});
+    });
+  });
+  // 筛选
+  if(TODO_FILTER==='todo') items = items.filter(i=>!i.done);
+  else if(TODO_FILTER==='done') items = items.filter(i=>i.done);
+  else if(TODO_FILTER==='overdue') items = items.filter(i=>!i.done && i.date<t);
+  if(q) items = items.filter(i=>i.text.toLowerCase().includes(q));
+
+  // 统计胶囊
+  const allItems = [].concat(...Object.entries(DB.todos).map(([d,ts])=>
+    ts.map((t,i)=>({date:d,...t}))));
+  const stat_total = allItems.length;
+  const stat_done = allItems.filter(i=>i.done).length;
+  const stat_overdue = allItems.filter(i=>!i.done && i.date<t).length;
+  const stats = `
+    <div class="mood-stats">
+      <span class="mood-stat">📋 ${stat_total} 总数</span>
+      <span class="mood-stat">✅ ${stat_done} 已完成</span>
+      <span class="mood-stat">⏳ ${stat_total-stat_done} 待办</span>
+      <span class="mood-stat" style="color:var(--bad)">⚠️ ${stat_overdue} 逾期</span>
+    </div>`;
+
+  if(!items.length){
+    document.getElementById('tl-body').innerHTML = stats +
+      '<div class="muted small" style="padding:30px 0;text-align:center">没有匹配的待办</div>';
+    return;
+  }
+
+  // 按日期分组（倒序）
+  const groups = {};
+  items.forEach(i=>{(groups[i.date]=groups[i.date]||[]).push(i)});
+  const sortedDates = Object.keys(groups).sort().reverse();
+
+  const body = sortedDates.map(date=>{
+    const d = parseDate(date);
+    const diff = daysBetween(t, date);
+    const cd = diff===0?'今天':(diff>0?`${diff}天后`:`${-diff}天前`);
+    const arr = groups[date];
+    const undone = arr.filter(x=>!x.done).length;
+    return `<div class="tl-group">
+      <div class="tl-group-head" onclick="jumpFromTodo('${date}')">
+        <span>${date}</span>
+        <span style="color:var(--text);font-weight:400">${wkLabel(d)}</span>
+        <span class="cnt">${arr.length} 项${undone?` · ${undone} 未完成`:''}</span>
+        <span class="arrow">${cd} · 跳转 →</span>
+      </div>
+      ${arr.map(it=>`
+        <div class="tl-item ${it.done?'done':''} ${!it.done && date<t?'overdue':''}">
+          <input type="checkbox" ${it.done?'checked':''}
+            onchange="toggleTodoFromList('${date}',${it.idx})">
+          <span class="when" onclick="jumpFromTodo('${date}')" title="跳到这天">${date.slice(5)}</span>
+          <span class="text">${escapeHTML(it.text)}</span>
+          <button class="x" onclick="delTodoFromList('${date}',${it.idx})">✕</button>
+        </div>
+      `).join('')}
+    </div>`;
+  }).join('');
+
+  document.getElementById('tl-body').innerHTML = stats + body;
+}
+function toggleTodoFromList(date, idx){
+  DB.todos[date][idx].done = !DB.todos[date][idx].done;
+  save(); renderTodoList();
+  if(date===selDate) renderTodos();
+  renderCal(); renderWeek();
+}
+function delTodoFromList(date, idx){
+  DB.todos[date].splice(idx,1);
+  if(!DB.todos[date].length) delete DB.todos[date];
+  save(); renderTodoList();
+  if(date===selDate) renderTodos();
+  renderCal(); renderWeek();
+}
+function jumpFromTodo(k){
+  const d = parseDate(k);
+  viewDate = new Date(d.getFullYear(), d.getMonth(), 1);
+  selectDay(k);
+  closeTodoList();
+}
+// ESC 关闭也支持待办浮层
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeTodoList();
+});
+</script>
+
+<div class="modal-mask" id="interviews-mask" onclick="if(event.target===this)closeReviews()">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>面试复盘</h3>
+      <div class="filters">
+        <select id="iv-co-filter" onchange="renderReviews()">
+          <option value="">全部公司</option>
+        </select>
+        <select id="iv-round-filter" onchange="renderReviews()">
+          <option value="">全部轮次</option>
+          <option value="一面">一面</option>
+          <option value="二面">二面</option>
+          <option value="三面">三面</option>
+          <option value="HR面">HR面</option>
+        </select>
+        <button onclick="toggleReviewForm()" id="iv-add-btn">＋ 新增</button>
+      </div>
+      <button class="modal-close" onclick="closeReviews()">✕</button>
+    </div>
+    <div class="modal-body" id="iv-body"></div>
+  </div>
+</div>
+
+<script>
+let ivFormOpen = false;
+let ivEditingIdx = null;
+
+function openReviews(){
+  document.getElementById('interviews-mask').classList.add('on');
+  rebuildReviewCoOptions();
+  renderReviews();
+}
+function closeReviews(){
+  document.getElementById('interviews-mask').classList.remove('on');
+  ivFormOpen = false; ivEditingIdx = null;
+}
+function rebuildReviewCoOptions(){
+  const sel = document.getElementById('iv-co-filter');
+  const cur = sel.value;
+  const cos = DB.companies.map(c=>c.name);
+  // 也要包含已写复盘里出现的公司（防止公司被删）
+  (DB.reviews||[]).forEach(r=>{ if(r.company && !cos.includes(r.company)) cos.push(r.company); });
+  sel.innerHTML = '<option value="">全部公司</option>' +
+    cos.map(n=>`<option ${n===cur?'selected':''}>${escapeHTML(n)}</option>`).join('');
+}
+function toggleReviewForm(){
+  ivFormOpen = !ivFormOpen;
+  if(!ivFormOpen) ivEditingIdx = null;
+  renderReviews();
+}
+function editReview(i){
+  ivEditingIdx = i;
+  ivFormOpen = true;
+  renderReviews();
+  document.getElementById('iv-body').scrollTop = 0;
+}
+function delReview(i){
+  if(!confirm('删除这条复盘？')) return;
+  DB.reviews.splice(i,1); save(); renderReviews();
+}
+function saveReview(){
+  const company = document.getElementById('f-co').value.trim();
+  const round = document.getElementById('f-round').value;
+  const date = document.getElementById('f-date').value;
+  const rate = parseInt(document.getElementById('f-rate').value)||0;
+  const questions = document.getElementById('f-questions').value.trim();
+  const reflection = document.getElementById('f-reflection').value.trim();
+  const next = document.getElementById('f-next').value.trim();
+  if(!company){ alert('请选公司'); return; }
+  if(!date){ alert('请选日期'); return; }
+  const data = {company, round, date, rate, questions, reflection, next};
+  if(ivEditingIdx!=null) DB.reviews[ivEditingIdx] = data;
+  else (DB.reviews=DB.reviews||[]).push(data);
+  save();
+  ivFormOpen = false; ivEditingIdx = null;
+  rebuildReviewCoOptions();
+  renderReviews();
+}
+function renderReviews(){
+  const coF = document.getElementById('iv-co-filter').value;
+  const rdF = document.getElementById('iv-round-filter').value;
+  const all = (DB.reviews||[]);
+
+  // 表单
+  let formHtml = '';
+  if(ivFormOpen){
+    const ed = ivEditingIdx!=null ? DB.reviews[ivEditingIdx] : null;
+    const coOpts = DB.companies.map(c=>c.name);
+    if(ed && !coOpts.includes(ed.company)) coOpts.push(ed.company);
+    formHtml = `
+      <div class="iv-form">
+        <div class="row2">
+          <select id="f-co">
+            <option value="">选公司…</option>
+            ${coOpts.map(n=>`<option ${ed&&ed.company===n?'selected':''}>${escapeHTML(n)}</option>`).join('')}
+          </select>
+          <select id="f-round">
+            ${['一面','二面','三面','HR面'].map(r=>
+              `<option ${ed&&ed.round===r?'selected':(!ed&&r==='一面'?'selected':'')}>${r}</option>`).join('')}
+          </select>
+          <input type="date" id="f-date" value="${ed?ed.date:fmt(today())}">
+          <select id="f-rate" title="自评">
+            ${[0,1,2,3,4,5].map(n=>{
+              const lbl = n===0?'未评':'★'.repeat(n);
+              return `<option value="${n}" ${ed&&ed.rate===n?'selected':''}>${lbl}</option>`;
+            }).join('')}
+          </select>
+        </div>
+        <div class="iv-field-label">问题记录（题目 / 自己的回答）</div>
+        <textarea id="f-questions" placeholder="如：1. 为什么想做 AI PM？答：…">${ed?escapeHTML(ed.questions||''):''}</textarea>
+        <div class="iv-field-label">复盘反思（哪里答得不好 / 哪些没准备到）</div>
+        <textarea id="f-reflection" placeholder="">${ed?escapeHTML(ed.reflection||''):''}</textarea>
+        <div class="iv-field-label">下一步行动</div>
+        <textarea id="f-next" placeholder="如：补充某模型卡 / 准备 STAR 案例 X">${ed?escapeHTML(ed.next||''):''}</textarea>
+        <div class="actions">
+          <button onclick="toggleReviewForm()">取消</button>
+          <button class="primary" onclick="saveReview()">${ed?'更新':'保存'}</button>
+        </div>
+      </div>`;
+  }
+
+  // 列表
+  let list = all.map((r,i)=>({...r,_i:i}));
+  if(coF) list = list.filter(r=>r.company===coF);
+  if(rdF) list = list.filter(r=>r.round===rdF);
+  list.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+
+  const stats = `
+    <div class="mood-stats">
+      <span class="mood-stat">📝 ${all.length} 条</span>
+      ${['一面','二面','三面','HR面'].map(r=>{
+        const n=all.filter(x=>x.round===r).length;
+        return n?`<span class="mood-stat">${r} ${n}</span>`:'';
+      }).join('')}
+    </div>`;
+
+  const cards = list.map(r=>{
+    const cls = r.round==='二面'?'r2':r.round==='三面'?'r3':r.round==='HR面'?'rhr':'';
+    const stars = r.rate>0 ? '★'.repeat(r.rate)+'☆'.repeat(5-r.rate) : '';
+    return `<div class="iv-card">
+      <div class="iv-head">
+        <span class="iv-co">${escapeHTML(r.company)}</span>
+        <span class="iv-pill ${cls}">${r.round||'—'}</span>
+        <span class="iv-date">${r.date||''}</span>
+        <span class="iv-rate" style="color:var(--accent2)">${stars}</span>
+        <button class="iv-x" onclick="editReview(${r._i})" title="编辑">✏️</button>
+        <button class="iv-x" onclick="delReview(${r._i})" title="删除">✕</button>
+      </div>
+      ${r.questions?`<div class="iv-field"><div class="iv-field-label">问题记录</div>
+        <div class="iv-field-text">${escapeHTML(r.questions)}</div></div>`:''}
+      ${r.reflection?`<div class="iv-field"><div class="iv-field-label">复盘反思</div>
+        <div class="iv-field-text">${escapeHTML(r.reflection)}</div></div>`:''}
+      ${r.next?`<div class="iv-field"><div class="iv-field-label">下一步</div>
+        <div class="iv-field-text">${escapeHTML(r.next)}</div></div>`:''}
+    </div>`;
+  }).join('') || (ivFormOpen?'':'<div class="muted small" style="padding:30px 0;text-align:center">还没有面试复盘，点右上角「＋ 新增」开始记录</div>');
+
+  document.getElementById('iv-body').innerHTML = stats + formHtml + cards;
+  document.getElementById('iv-add-btn').textContent = ivFormOpen?'收起表单':'＋ 新增';
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeReviews();
+});
+</script>
+
+<div class="modal-mask" id="suggest-mask" onclick="if(event.target===this)closeSuggest()">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>💡 推荐待办</h3>
+      <div class="filters">
+        <span class="muted small">点 ＋ 加入今日</span>
+      </div>
+      <button class="modal-close" onclick="closeSuggest()">✕</button>
+    </div>
+    <div class="modal-body" id="sg-body"></div>
+  </div>
+</div>
+
+<script>
+const SUGGEST_DATA = {
+  ielts: {
+    label:'雅思 8.22',
+    sections:[
+      {title:'听力 Listening', items:[
+        {icon:'🎧', t:'精听 BBC 6 Minute English', d:'每天 1 期，先盲听总结大意，再逐句精听 + 跟读，记下 3 个生词'},
+        {icon:'🎧', t:'剑桥真题听力 1 套', d:'限时模考 → 对答案 → 错题精听原文 → 整理同义替换'},
+        {icon:'🗒️', t:'整理场景词汇', d:'按租房/选课/旅游/学术讲座等场景累积高频词，每周复习'},
+      ]},
+      {title:'阅读 Reading', items:[
+        {icon:'📖', t:'剑桥真题阅读限时 1 篇', d:'严格 20 分钟一篇，对答案 → 错题分析（题型 / 定位 / 同义替换）'},
+        {icon:'📚', t:'学术词汇 50 个', d:'用 AWL 或剑桥词频表，每天背 + 复习昨天的'},
+        {icon:'✍️', t:'同义替换专项练习', d:'整理题干 ↔ 原文的替换对，培养快速定位能力'},
+      ]},
+      {title:'写作 Writing', items:[
+        {icon:'📊', t:'Task 1 图表写作 1 篇', d:'每周 2 篇，覆盖柱状/折线/饼/流程图/地图各类型'},
+        {icon:'📝', t:'Task 2 大作文 1 篇', d:'40 分钟内完成 250+ 词，重点训练结构 + 论证逻辑'},
+        {icon:'⭐', t:'背 5 句高分句型', d:'积累自己的句库，避免每次现想；强调地道表达不堆词'},
+        {icon:'👁️', t:'每周一篇找老师/AI 批改', d:'有反馈才能改进，无反馈写再多也是无效输出'},
+      ]},
+      {title:'口语 Speaking', items:[
+        {icon:'🗣️', t:'Part 1 题库 5 题', d:'当季题库每日刷，回答控制在 2-3 句，避免单字答'},
+        {icon:'🃏', t:'Part 2 卡片 1 张', d:'练 1.5 分钟独白，录音 → 回听 → 找出卡顿 / 重复 / 语法错'},
+        {icon:'💬', t:'找语伴 / AI 模拟 30 分钟', d:'真实开口才有效，可用 ChatGPT 语音模式 / Cambly / 语伴'},
+        {icon:'🎵', t:'跟读纪录片 / TED 10 分钟', d:'练语音语调，最忌中式发音，重读弱读连读节奏'},
+      ]},
+      {title:'综合', items:[
+        {icon:'📅', t:'每周一次完整模考', d:'周末用一个上午，按真实考试顺序做完 LRWS，复盘 3 小时'},
+        {icon:'🧘', t:'考前心态训练', d:'最后两周不要再大量学新内容，巩固 + 调整作息为主'},
+      ]}
+    ]
+  },
+  job: {
+    label:'秋招 9 月',
+    subs: ['通用', '互联网', '国央企'],
+    data: {
+      '通用': [
+        {title:'自我认知 / 表达', items:[
+          {icon:'⭐', t:'整理 3-5 个 STAR 项目', d:'Situation/Task/Action/Result，覆盖你最强的能力点。每个准备 1 分钟版 + 3 分钟版'},
+          {icon:'📄', t:'简历精修', d:'一页纸；用数字说话；按岗位类别准备 2-3 个版本；让朋友/学长姐 review'},
+          {icon:'🎤', t:'练习自我介绍', d:'30 秒 / 1 分钟 / 3 分钟三个版本，对镜子录视频回看'},
+          {icon:'🌐', t:'更新 LinkedIn / 个人网站', d:'有作品/项目链接的岗位很加分'},
+        ]},
+        {title:'软实力', items:[
+          {icon:'💪', t:'抗压 / 拒绝恢复练习', d:'秋招大概率会被拒很多次，提前心理建设。每挂一家，复盘 5 分钟就翻篇'},
+          {icon:'🤝', t:'群面经验积累', d:'看 B 站/小红书群面案例，理解 leader / time-keeper / 总结者各角色'},
+          {icon:'📚', t:'阅读输入', d:'《俞军产品方法论》《有的放矢》《硅谷之火》或行业书，给面试谈资和深度'},
+        ]},
+        {title:'信息渠道', items:[
+          {icon:'📰', t:'订阅 1-2 个秋招公众号', d:'如「应届生求职」「校招日报」等，每天通勤翻一遍'},
+          {icon:'👥', t:'加目标公司内推群', d:'BOSS / 牛客 / 一亩三分地 / 飞书招聘群；内推流程比海投快'},
+        ]},
+      ],
+      '互联网': [
+        {title:'AI / 产品基本功', items:[
+          {icon:'🤖', t:'每天用 1 小时 LLM 工具', d:'ChatGPT / Claude / 通义 / 智谱 / DeepSeek 都用一遍，体验差异'},
+          {icon:'📖', t:'读 Anthropic / OpenAI 博客', d:'每周 2-3 篇，了解前沿动态。重点：Agent / RAG / Eval / Tool use'},
+          {icon:'🧪', t:'动手做 1 个 AI 小工具', d:'不用写代码也行：用 Coze / Dify / Notion AI / 元宝智能体搭一个；亲手做过比说"会用"强 100 倍'},
+          {icon:'📊', t:'写一篇产品分析', d:'拆 ChatGPT/Claude 某个新功能 → 用户场景 → 留存逻辑 → 商业化路径，500 字'},
+        ]},
+        {title:'数据 / 逻辑', items:[
+          {icon:'📈', t:'SQL 基础掌握', d:'SELECT/JOIN/GROUP BY/窗口函数；用免费在线 SQL 平台刷 30 题足够应付笔试'},
+          {icon:'🧮', t:'理解 A/B test 与基本统计', d:'置信区间 / 显著性 / 样本量 / 辛普森悖论；面试常考'},
+          {icon:'📱', t:'每周 1 次产品体验报告', d:'选一个你常用的 App，画用户旅程地图 + 找 3 个体验问题 + 提改进方案'},
+        ]},
+        {title:'行业判断', items:[
+          {icon:'🎯', t:'跟踪 5 家标杆公司', d:'飞书 / 通义 / 月暗 / 智谱 / Anthropic 等，知道他们最近发了什么、组织在做什么'},
+          {icon:'💭', t:'写一篇行业思考', d:'如「为什么字节做飞书没杀死钉钉」「Manus 路线为什么走不通」，发知乎/即刻/小红书'},
+        ]},
+      ],
+      '国央企': [
+        {title:'笔试', items:[
+          {icon:'📝', t:'行测每日 30 题', d:'判断推理 + 资料分析是性价比最高的；用粉笔/华图 App'},
+          {icon:'📃', t:'申论每周 1 篇', d:'先大作文，后小题；积累政策类素材（人民日报评论 / 学习强国）'},
+          {icon:'🔢', t:'数字推理 / 类比推理刷题', d:'套路题型，做 200 题以上能稳定提分'},
+        ]},
+        {title:'面试', items:[
+          {icon:'🗣️', t:'结构化面试题库 30 题', d:'按"自我认知 / 应急应变 / 人际关系 / 组织管理"分类练'},
+          {icon:'👥', t:'无领导小组讨论模拟', d:'熟悉典型题：选择题 / 排序题 / 资源争夺题。练破冰 + 总结者角色'},
+          {icon:'🎙️', t:'普通话 / 公文表达训练', d:'国央企很看重表达稳重，避免互联网黑话。每天朗读 10 分钟新闻联播稿'},
+        ]},
+        {title:'背景知识', items:[
+          {icon:'📺', t:'每天看新闻联播 / 学习强国', d:'15 分钟即可，了解最新政策方向。面试和申论都用得上'},
+          {icon:'🏛️', t:'熟悉目标单位主营业务', d:'三大运营商 / 国家电网 / 中烟 / 各银行总行 ≠ 分行 ≠ 支行，了解层级和岗位差异'},
+          {icon:'💼', t:'公文写作模板积累', d:'通知 / 请示 / 报告 / 函的格式；央企面试可能要求现场写'},
+        ]},
+      ]
+    }
+  }
+};
+
+let sgTab = 'ielts';
+let sgSub = '通用';
+
+function openSuggest(){
+  document.getElementById('suggest-mask').classList.add('on');
+  renderSuggest();
+}
+function closeSuggest(){
+  document.getElementById('suggest-mask').classList.remove('on');
+}
+function setSgTab(t){ sgTab = t; renderSuggest(); }
+function setSgSub(s){ sgSub = s; renderSuggest(); }
+
+function isSuggestAddedToday(text){
+  const k = fmt(today());
+  return (DB.todos[k]||[]).some(x=>x.text===text);
+}
+function addSuggestToToday(text, btn){
+  const k = fmt(today());
+  if(!DB.todos[k]) DB.todos[k] = [];
+  // 避免重复
+  if(DB.todos[k].some(x=>x.text===text)){
+    btn.classList.add('added'); btn.textContent='✓ 已加';
+    return;
+  }
+  DB.todos[k].push({text, done:false});
+  save();
+  btn.classList.add('added'); btn.textContent='✓ 已加';
+  // 同步主界面
+  if(selDate===k) renderTodos();
+  renderCal(); renderWeek();
+}
+function renderSuggest(){
+  let html = `
+    <div class="sg-tabs">
+      <button class="${sgTab==='ielts'?'on':''}" onclick="setSgTab('ielts')">🎓 雅思 8.22</button>
+      <button class="${sgTab==='job'?'on':''}" onclick="setSgTab('job')">💼 秋招 9 月</button>
+    </div>`;
+
+  if(sgTab==='ielts'){
+    html += `<div class="sg-tip">备考节奏建议：每天 LRWS 各覆盖一点（不要只攻一项），每周一次完整模考。</div>`;
+    SUGGEST_DATA.ielts.sections.forEach(sec=>{
+      html += `<div class="sg-section"><h4>${sec.title}</h4>`;
+      sec.items.forEach(it=>{
+        const added = isSuggestAddedToday(it.t);
+        html += `<div class="sg-item">
+          <div class="sg-icon">${it.icon}</div>
+          <div class="sg-content">
+            <div class="sg-title">${escapeHTML(it.t)}</div>
+            <div class="sg-desc">${escapeHTML(it.d)}</div>
+          </div>
+          <button class="sg-add ${added?'added':''}" onclick="addSuggestToToday('${escapeAttr(it.t)}',this)">
+            ${added?'✓ 已加':'＋ 今日'}
+          </button>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+  } else {
+    html += `<div class="sg-sub">`;
+    SUGGEST_DATA.job.subs.forEach(s=>{
+      html += `<button class="${sgSub===s?'on':''}" onclick="setSgSub('${s}')">${s}</button>`;
+    });
+    html += `</div>`;
+    html += `<div class="sg-tip">关注能力本身，不要陷入流程焦虑。每天进步一点，比每天投 50 份简历更重要。</div>`;
+    const sections = SUGGEST_DATA.job.data[sgSub] || [];
+    sections.forEach(sec=>{
+      html += `<div class="sg-section"><h4>${sec.title}</h4>`;
+      sec.items.forEach(it=>{
+        const added = isSuggestAddedToday(it.t);
+        html += `<div class="sg-item">
+          <div class="sg-icon">${it.icon}</div>
+          <div class="sg-content">
+            <div class="sg-title">${escapeHTML(it.t)}</div>
+            <div class="sg-desc">${escapeHTML(it.d)}</div>
+          </div>
+          <button class="sg-add ${added?'added':''}" onclick="addSuggestToToday('${escapeAttr(it.t)}',this)">
+            ${added?'✓ 已加':'＋ 今日'}
+          </button>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+  }
+
+  document.getElementById('sg-body').innerHTML = html;
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeSuggest();
+});
+</script>
+
+</body>
+</html>
